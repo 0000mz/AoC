@@ -5,3 +5,9 @@ rust_binary(
   srcs = ["rust/main.rs"],
   data = ["input.txt"],
 )
+
+cc_binary(
+  name = "c",
+  srcs = ["c/main.c"],
+  data = ["input.txt"],
+)
