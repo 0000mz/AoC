@@ -2,15 +2,23 @@ fn clamp(val: i32, min: i32, max: i32) -> i32 {
   std::cmp::max(std::cmp::min(val, max), min)
 }
 
-fn report_is_safe(report: &str) -> bool {
-  let levels: Vec<i32> = report
-    .split(" ")
-    .map(|level_str| level_str.parse::<i32>().unwrap())
-    .collect::<Vec<_>>();
-  if levels.len() == 1 {
-    return true;
+fn level_permutations(levels: &[i32]) -> Vec<Vec<i32>> {
+  let mut perms: Vec<Vec<i32>> = Vec::new();
+  for i in 0..levels.len() {
+    let mut p: Vec<usize> = (0..i).collect();
+    p.append(&mut (i+1..levels.len()).collect());
+    // p contains the indices that should be included in the permutaiton.
+    // Resolve the indices to the actual values.
+    perms.push(p
+      .into_iter()
+      .map(|idx| levels[idx])
+      .collect()
+    );
   }
+  perms
+}
 
+fn single_report_is_safe(levels: &[i32]) -> bool {
   // e.g 2 1 -> (2 - 1 = 1)  -> decresiong = positive direction
   //     1 2 -> (1 - 2 = -1) -> increasing = negative direction
   //     2 2 -> (2 - 2 = 0)  -> same = 0
@@ -41,17 +49,41 @@ fn report_is_safe(report: &str) -> bool {
   true
 }
 
+// Calculate if the report is safe. A report is safe if both are true:
+//   1. The levels are either all increasing or all decreasing.
+//   2. Any 2 adjacent levels differ by at least 1 and at most 3.
+//
+//   If `dampen` is true, a single bad level can be tolerated.
+fn report_is_safe(levels: &[i32], dampen: bool) -> bool {
+  if levels.len() == 1 {
+    return true;
+  }
+  (if dampen { level_permutations(levels) } else { vec![levels.to_vec()] })
+    .into_iter()
+    .map(|l| if single_report_is_safe(&l[..]) { 1 } else { 0 })
+    .sum::<i32>() > 0
+}
+
 fn calculate_safe_reports(input_file: &str) -> std::io::Result<()> {
   let contents = std::fs::read_to_string(input_file)?;
-  let reports: Vec<_> = contents.split("\n").collect::<Vec<_>>();
-
-  let safe_reports: i32 = reports
-    .into_iter()
+  let reports: Vec<Vec<i32>> = contents
+    .split("\n")
     .filter(|report| report.len() > 0)
-    .map(|report| if report_is_safe(report) { 1 } else { 0 })
-    .sum();
-  
-  println!("Safe reports: {}", safe_reports);
+    .map(|report| {
+      report
+        .split(" ")
+        .map(|level_str| level_str.parse::<i32>().unwrap())
+        .collect::<Vec<i32>>()
+    })
+    .collect::<Vec<_>>();
+
+  for dampen in [false, true] {
+    let safe_reports: i32 = reports
+      .iter()
+      .map(|report| if report_is_safe(&report[..], dampen) { 1 } else { 0 })
+      .sum();  
+    println!("Safe reports [dampen? {}]: {}", dampen, safe_reports);
+  }
   Ok(())
 }
 
